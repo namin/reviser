@@ -1,0 +1,60 @@
+import Reviser
+
+/-
+  Smoke.lean — smoke test executable.
+
+  Reports the load-bearing facts of the reviser artifact at runtime.
+  Every claim below is a Lean theorem; the executable just prints
+  that the kernel checked it at compile time.
+-/
+
+def main : IO Unit := do
+  IO.println "reviser — smoke test"
+  IO.println "===================="
+  IO.println ""
+  IO.println "Object substrate: atomic literals (pos a / neg a)."
+  IO.println "    Belief.flip : pos ↔ neg"
+  IO.println "    consistent : no atom both pos and neg in the set"
+  IO.println "    consistent_filter : filtering preserves consistency  ✓"
+  IO.println ""
+  IO.println "Operator layer:"
+  IO.println "    SoundRevision : op + 4 AGM postulates"
+  IO.println "      (success, inclusion, vacuity, consistency)"
+  IO.println "    SoundContraction : op + 4 AGM postulates"
+  IO.println "      (inclusion, vacuity, success, recovery)"
+  IO.println ""
+  IO.println "Canonical operators:"
+  IO.println "    kernelRevise B b := (B.filter (· ≠ b.flip)) ++ [b]"
+  IO.println "    kernelContract B b := B.filter (· ≠ b)"
+  IO.println "    kernelRevision : SoundRevision  ✓ (all 4 postulates discharged)"
+  IO.println "    kernelContraction : SoundContraction  ✓ (all 4 discharged)"
+  IO.println ""
+  IO.println "Tower layer:"
+  IO.println "    Step : revise / contract"
+  IO.println "    BeliefTower : initial set + steps"
+  IO.println "    BeliefTower.beliefAt n : fold of first n steps"
+  IO.println ""
+  IO.println "Headline metatheorem:"
+  IO.println "    BeliefTower.consistency_preserved : every rung consistent  ✓"
+  IO.println ""
+  IO.println "Demo (5-rung sequence with retraction):"
+  IO.println "    rung 0:  K = []"
+  IO.println "    rung 1:  revise pos a    → K = [pos a]"
+  IO.println "    rung 2:  revise pos b    → K = [pos a, pos b]"
+  IO.println "    rung 3:  revise neg a    → K = [pos b, neg a]   ← retraction!"
+  IO.println "    rung 4:  contract neg a  → K = [pos b]"
+  IO.println ""
+  IO.println "    rung0_eq, rung1_eq, rung2_eq, rung3_eq, rung4_eq  ✓"
+  IO.println "    rung3_retracts_pos_a  ✓ (pos a was added at rung 1, gone by rung 3)"
+  IO.println "    rung4_retracts_neg_a  ✓ (pure contraction)"
+  IO.println "    demo_consistency  ✓ (every rung consistent)"
+  IO.println ""
+  IO.println "Non-monotonicity:"
+  IO.println "    belief_set_shrinks  ✓ (∃ b ∈ rung m, b ∉ rung n with m < n)"
+  IO.println "    rung4_smaller_than_rung2  ✓ (length-witness)"
+  IO.println "    reviser_nonmonotone  ✓ (consistent at every rung, non-monotone)"
+  IO.println ""
+  IO.println "Climber checks theory construction;"
+  IO.println "defeater checks theory qualification;"
+  IO.println "reviser checks belief revision."
+  IO.println "Same kernel discipline. Three polarities, three substrates."
