@@ -55,91 +55,100 @@ sites of non-monotonicity, both gated by typed certificates.
 
 ## Status
 
-Sketch. The Lean code is to come; this README pins the shape so
-we can react to it before any of it is built. Naming is
-provisional — `reviser` parallels climber/defeater, but `agm`,
-`revisor`, `believer` are alternatives.
+Built. Eight library files compile end-to-end on Lean 4.29.1 with
+no `sorry` and no added axioms. Smoke executable runs and prints
+the load-bearing theorem catalog.
 
-## What will live here
+## What lives here
 
 - **`Reviser/Object.lean`** — the belief substrate.
-  - `Belief`: `pos a` or `neg a` (atomic literal). The substrate
-    is finite: belief sets are lists of literals, not arbitrary
-    propositional formulas. This lets us avoid SAT-decidability
-    in the kernel and gives all proofs structural shape.
+  - `Belief`: `pos a` or `neg a` (atomic literal).
   - `BeliefSet := List Belief`.
-  - `consistent`: no atom appears as both `pos` and `neg`. The
-    decidable, finite substitute for "deductively closed and
-    not entailing ⊥."
-  - `Belief.flip`: `pos a ↔ neg a`. The "negation" used by the
-    consistency check.
+  - `consistent`: no atom appears as both `pos` and `neg` — the
+    decidable, finite substitute for deductive closure + ⊥.
+  - `Belief.flip`: `pos a ↔ neg a`. Used by the consistency check.
+  - `consistent_filter`: filtering preserves consistency.
 
 - **`Reviser/Operator.lean`** — operators with rationality bundles.
-  - `SoundRevision`: a proposed revision operator
-    `op : BeliefSet → Belief → BeliefSet` plus its postulate
-    bundle:
-    - `success`: `b ∈ op B b`
-    - `inclusion`: `op B b ⊆ B ∪ {b}` (no spurious additions)
-    - `vacuity`: `b.flip ∉ B → op B b = B ∪ {b}` (no retraction
-      when none is needed)
-    - `consistency`: `consistent B → consistent (op B b)`
-    - `extensionality`: equivalent inputs give equal outputs.
-      (Trivial at the literal level — equality is decidable.)
+  - `SoundRevision`: a proposed function plus AGM postulates —
+    *success*, *inclusion*, *vacuity*, *consistency*. The kernel
+    admits iff the bundle type-checks.
+  - `SoundContraction`: contraction postulates — *inclusion*,
+    *vacuity*, *success*, *recovery*.
+  - `kernelRevise B b := (B.filter (· ≠ b.flip)) ++ [b]` — the
+    *filter* is Levi's contraction step; the *append* is expansion.
+  - `kernelContract B b := B.filter (· ≠ b)`.
+  - `kernelRevision : SoundRevision`, `kernelContraction : SoundContraction` —
+    canonical operators with all postulates discharged.
 
-  - `SoundContraction`: a proposed contraction operator with its
-    own postulate bundle:
-    - `inclusion`: `op B b ⊆ B` (only remove)
-    - `vacuity`: `b ∉ B → op B b = B`
-    - `success`: `b ∈ op B b → False` (b is removed)
-    - `recovery`: `B ⊆ (op B b) ∪ {b}` (after contracting then
-      re-adding, get back what you had)
-    - `extensionality`.
+- **`Reviser/Identities.lean`** — classical AGM identities.
+  - `levi_identity`: `kernelRevise B b = kernelContract B b.flip ++ [b]`.
+    Provable by `rfl` — the Levi identity falls out of the
+    definitions. The constructive form of `K * φ = (K - ¬φ) + φ`.
+  - `harper_identity`: `x ∈ kernelContract B b ↔ x ∈ B ∧ x ∈ kernelRevise B b.flip`.
+    The set-theoretic form of `K - φ = K ∩ (K * ¬φ)`.
+  - `recovery_roundtrip`: every belief in `K` survives the
+    contract-by-`b` then expand-by-`b` cycle. AGM Recovery
+    realized constructively at the literal level.
 
-  - `SoundExpansion`: trivial — just append. Included for
-    symmetry; satisfies the trivial set of postulates by rfl.
+- **`Reviser/Tower.lean`** — iterated revision as a tower.
+  - `Step`: revision or contraction (each carrying its sound
+    operator and target literal).
+  - `applyStep_preserves_consistent`: each step preserves
+    consistency.
+  - `BeliefTower`: initial consistent belief set + finite step
+    list.
+  - `BeliefTower.beliefAt n`: fold of first `n` steps over
+    initial.
+  - `BeliefTower.consistency_preserved`: **headline metatheorem.**
+    Every rung is consistent. The `consistency` postulate of each
+    step's operator is what chains through.
 
-  - `kernelRevision`: the *canonical* sound revision operator
-    `λ B b => (B.filter (· ≠ b.flip)) ++ [b]`. The `filter`
-    *is* the retraction; the `++` is the addition. All five
-    postulates discharged by structural induction.
+- **`Reviser/Demo.lean`** — five-rung sequence with visible
+  retraction.
+  - Rung 0: `K = []`. Rung 1: revise `pos a`. Rung 2: revise
+    `pos b`. Rung 3: revise `neg a` (retracts `pos a`). Rung 4:
+    contract `neg a`.
+  - Per-rung equality theorems (`rung0_eq` … `rung4_eq`),
+    retraction witnesses (`rung3_retracts_pos_a`,
+    `rung4_retracts_neg_a`), `demo_consistency`.
 
-- **`Reviser/Tower.lean`** — iterated revision.
-  - `BeliefTower`: an initial belief set (with consistency
-    proof) plus a rung-indexed sequence of admitted update
-    steps. Each step is one of `Revise op b`, `Contract op b`,
-    `Expand b`.
-  - `BeliefTower.beliefAt n`: the belief set after applying all
-    steps up to rung n.
-  - `rationality_preserved`: every rung's operator satisfies
-    its postulate bundle (immediate from the structures'
-    invariants).
-  - `consistency_preserved`: **headline metatheorem.** If the
-    initial belief set is consistent and every revision input
-    is consistent, then every rung is consistent. By induction
-    over rungs, applying each operator's `consistency`
-    certificate.
+- **`Reviser/Science.lean`** — scientific theory revision narrative.
+  - `K = [earthFlat]` → revise `shipsDisappearAtHorizon` → revise
+    `¬earthFlat` (retraction) → revise `earthRound` → revise
+    `satelliteImagery`.
+  - Per-rung equality theorems plus `rung2_retracts_earthFlat`,
+    `rung3_has_earthRound`, `science_consistency`.
+  - The textbook narrative for AGM dynamics — initial conviction,
+    evidence, theory abandonment, replacement, corroboration.
 
-- **`Reviser/Demo.lean`** — an end-to-end revision sequence with
-  visible retraction.
-  - Rung 0: `K = []`.
-  - Rung 1: revise by `pos a` → `K = [pos a]`.
-  - Rung 2: revise by `pos b` → `K = [pos a, pos b]`.
-  - Rung 3: revise by `neg a` → `K = [pos b, neg a]` ← retraction!
-  - Rung 4: contract `neg a` → `K = [pos b]` ← explicit retraction.
-  - Theorems:
-    - `rung3_retracts_a`: `pos a ∉ beliefAt tower 3`.
-    - `rung4_pure_contraction`: `neg a ∉ beliefAt tower 4`.
-    - `tower_consistency`: every rung is consistent.
+- **`Reviser/Iterated.lean`** — iterated revision and operator
+  diversity.
+  - `setEquiv`: equality up to set membership (the natural
+    equality for AGM-style postulates that target *what is
+    believed*, not how it's listed).
+  - `kernelRevise_dp1`: `kernelRevise (kernelRevise B b) b ≈ kernelRevise B b`.
+    Idempotence under `setEquiv` — the second revision adds a
+    duplicate that set-equality washes out.
+  - `pessimisticRevise B b := if b.flip ∈ B then [b] else B ++ [b]` —
+    when conflict, drop everything; when no conflict, expand.
+  - `pessimisticRevision : SoundRevision` — a SECOND AGM-rational
+    operator with all four postulates discharged.
+  - `pessimistic_disagrees_with_kernel`: on `[pos a, pos b] * neg a`,
+    the two operators give different outputs (`[pos b, neg a]` vs
+    `[neg a]`). **AGM doesn't determine the operator uniquely.**
+  - `pessimistic_violates_dp2`: `pessimisticRevise` is AGM-rational
+    yet fails Darwiche-Pearl's DP2 postulate. **AGM doesn't
+    constrain iteration** — iterated revision (DP) is a strictly
+    stronger theory. Concrete Lean witness, parallel to defeater's
+    `Oscillate.lean` finding.
 
 - **`Reviser/Counter.lean`** — non-monotonicity witnesses.
-  - `belief_set_size_decreases`: between rung 2 and rung 3, the
-    belief set lost an element it gained at rung 1. Proof that
-    revision is genuinely non-monotonic.
-  - `retracted_then_added_back`: after revising by ¬a then
-    revising by a again, the original `pos a` belief is back
-    (modulo Recovery and Levi).
-  - `iterated_revision_not_idempotent`: a sequence that exhibits
-    why iterated revision is its own theory (DP postulates).
+  - `belief_set_shrinks`: there exist rungs `m < n` and a belief
+    that's in rung-`m`'s set but not in rung-`n`'s.
+  - `rung4_smaller_than_rung2`: a length witness.
+  - `reviser_nonmonotone`: every rung consistent yet the belief
+    set is genuinely non-monotone in the rung index.
 
 ## Headline picture
 
@@ -210,6 +219,16 @@ a triad rather than a single example.
    automatic during revision; explicit `SoundContraction` is its
    sibling.
 
+5. **AGM's underdetermination is constructive.** The postulates
+   characterize a *class* of operators, not a unique one.
+   `Iterated.lean` exhibits two AGM-rational operators
+   (`kernelRevision` and `pessimisticRevision`) that disagree on
+   the same input — and shows that the pessimistic one *violates*
+   Darwiche-Pearl's DP2. The "AGM doesn't constrain iteration"
+   point becomes a Lean witness, parallel to defeater's period-2
+   oscillation: a structural counterexample showing the theory's
+   limit.
+
 ## Scope (design choices made)
 
 - **Atomic-literal substrate.** Beliefs are `pos a` / `neg a` for
@@ -231,15 +250,17 @@ a triad rather than a single example.
 - **Full propositional substrate.** Move from atomic literals to
   arbitrary propositional formulas. Requires SAT-decidability and
   the AGM machinery for partial-meet contraction. Probably 2–3×
-  the line count.
+  the line count. Full DP3/DP4 require this — they reference
+  `φ ∧ ψ` and entailment.
 - **Representation theorem (Katsuno-Mendelzon 1991).** Show that
   AGM-rational revision operators correspond to total preorders on
   worlds. The bridge between syntactic postulates and semantic
   spheres-of-similarity. Hard but iconic.
-- **Iterated revision (Darwiche-Pearl 1997).** AGM's six postulates
-  don't constrain *iteration* enough; DP add four more for
-  rational sequences. The tower naturally accommodates iteration —
-  what does enforcing DP at the tower level look like?
+- **Full Darwiche-Pearl postulates.** `Iterated.lean` proves DP1
+  for `kernelRevise` and exhibits a DP2 violation by
+  `pessimisticRevise`. DP3 and DP4 require compound formulas;
+  fully formalizing the DP family would let us *gate* operators
+  on iterated-revision rationality, not just AGM.
 - **Connection to defeater.** Both are non-monotonic; both gate via
   typed certificates. Is there a translation between them? Can a
   reviser-tower simulate a defeater-tower or vice versa?
