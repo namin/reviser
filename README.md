@@ -9,7 +9,7 @@ by an independent bundle of typed postulates.
 > **Climber checks theory construction; defeater checks
 > theory qualification; reviser checks belief revision.**
 
-The proposer (an LLM, in the full version) does not propose new
+The proposer (hand-written in this artifact; an LLM in the full version) does not propose new
 beliefs as raw data. It proposes **revision *operators*** —
 functions `op : BeliefSet → Formula → BeliefSet` together with
 proofs that the operator satisfies the AGM rationality postulates.
