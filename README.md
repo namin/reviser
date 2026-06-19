@@ -55,7 +55,7 @@ sites of non-monotonicity, both gated by typed certificates.
 
 ## Status
 
-Built. Eight library files compile end-to-end on Lean 4.29.1 with
+Built. Eight library files compile end-to-end on Lean 4.30.0 with
 no `sorry` and no added axioms. Smoke executable runs and prints
 the load-bearing theorem catalog.
 
